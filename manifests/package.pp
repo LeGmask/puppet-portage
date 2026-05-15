@@ -125,7 +125,6 @@ define portage::package (
   $unmask_target    = undef,
   $emerge_command   = undef,
 ) {
-
   include portage::params
   if(defined('$portage::emerge_command')) {
     $_portage_emerge_command = $portage::emerge_command
@@ -297,11 +296,10 @@ define portage::package (
     timeout     => 43200,
     # Emerge inherits the path, so it must be valid.
     path        => ['/usr/local/sbin','/usr/local/bin',
-                    '/usr/sbin','/usr/bin','/sbin','/bin'],
+    '/usr/sbin','/usr/bin','/sbin','/bin'],
   }
 
   package { $name:
     ensure => $ensure,
   }
-
 }
