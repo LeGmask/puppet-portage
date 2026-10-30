@@ -51,6 +51,7 @@ class Puppet::Provider::PortageFile < Puppet::Provider::ParsedFile
       v = components[:compare] + components[:version] if components[:compare] && components[:version]
 
       hash[:name]    = components[:package]
+      hash[:name]   += "::#{components[:repository]}" if components[:repository]
       hash[:version] = v
 
       hash[:slot] = components[:slot].dup if components[:slot]
@@ -66,6 +67,7 @@ class Puppet::Provider::PortageFile < Puppet::Provider::ParsedFile
       v = components[:compare] + components[:version] if components[:compare] && components[:version]
 
       hash[:name]    = components[:package]
+      hash[:name]   += "::#{components[:repository]}" if components[:repository]
       hash[:version] = v
 
       hash[:slot] = components[:slot].dup if components[:slot]

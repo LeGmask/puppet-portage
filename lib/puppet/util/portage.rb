@@ -5,16 +5,18 @@ module Puppet::Util::Portage
   #
   # @see http://dev.gentoo.org/~zmedico/portage/doc/man/ebuild.5.html 'man 5 ebuild section DEPEND'
   # @see http://dev.gentoo.org/~ulm/pms/head/pms.html 'section 3'
+  # @see http://dev.gentoo.org/~zmedico/portage/doc/man/portage.5.html 'man 5 portage'
 
   module_function
 
-  CATEGORY_PATTERN = '[\w+][\w+.-]*'
-  NAME_PATTERN     = '[\w+][\w+-]*?'
-  PACKAGE_PATTERN  = "(#{CATEGORY_PATTERN}/#{NAME_PATTERN})"
-  COMPARE_PATTERN  = '([<>=~]|[<>]=)'
-  VERSION_PATTERN  = '((?:cvs\.)?(?:\d+)(?:(?:\.\d+)*)(?:[a-z]?)(?:(?:_(?:pre|p|beta|alpha|rc)\d*)*)(?:-r(?:\d+))?)'
-  WILDCARD_PATTERN = "(#{VERSION_PATTERN}\\*)"
-  SLOT_PATTERN     = '([\w+./*=-]+)'
+  CATEGORY_PATTERN   = '[\w+*][\w+.*-]*'
+  NAME_PATTERN       = '[\w+*][\w+*-]*?'
+  PACKAGE_PATTERN    = "(?!\\S*\\*\\*)(#{CATEGORY_PATTERN}/#{NAME_PATTERN})"
+  COMPARE_PATTERN    = '([<>=~]|[<>]=)'
+  VERSION_PATTERN    = '((?:cvs\.)?(?:\d+)(?:(?:\.\d+)*)(?:[a-z]?)(?:(?:_(?:pre|p|beta|alpha|rc)\d*)*)(?:-r(?:\d+))?)'
+  WILDCARD_PATTERN   = "(#{VERSION_PATTERN}\\*)"
+  SLOT_PATTERN       = '([\w+./*=-]+)'
+  REPOSITORY_PATTERN = '[\w+][\w+-]*?'
 
   BASE_ATOM_REGEX              = Regexp.new "^#{PACKAGE_PATTERN}$"
   VERSIONED_ATOM_REGEX         = Regexp.new "^#{COMPARE_PATTERN}#{PACKAGE_PATTERN}-#{VERSION_PATTERN}$"
@@ -22,7 +24,8 @@ module Puppet::Util::Portage
   VERSIONED_SLOTTED_ATOM_REGEX = Regexp.new "^#{COMPARE_PATTERN}#{PACKAGE_PATTERN}-#{VERSION_PATTERN}:#{SLOT_PATTERN}$"
   WILDCARD_ATOM_REGEX          = Regexp.new "^(=?)#{PACKAGE_PATTERN}-#{WILDCARD_PATTERN}$"
   WILDCARD_SLOTTED_ATOM_REGEX  = Regexp.new "^(=?)#{PACKAGE_PATTERN}-#{WILDCARD_PATTERN}:#{SLOT_PATTERN}$"
-  DEPEND_ATOM_REGEX            = Regexp.union BASE_ATOM_REGEX, VERSIONED_ATOM_REGEX, SLOTTED_ATOM_REGEX, VERSIONED_SLOTTED_ATOM_REGEX, WILDCARD_ATOM_REGEX, WILDCARD_SLOTTED_ATOM_REGEX
+  REPOSITORY_ATOM_REGEX        = Regexp.new "^#{PACKAGE_PATTERN}::(#{REPOSITORY_PATTERN})$"
+  DEPEND_ATOM_REGEX            = Regexp.union BASE_ATOM_REGEX, VERSIONED_ATOM_REGEX, SLOTTED_ATOM_REGEX, VERSIONED_SLOTTED_ATOM_REGEX, WILDCARD_ATOM_REGEX, WILDCARD_SLOTTED_ATOM_REGEX, REPOSITORY_ATOM_REGEX
 
   # Determine if a string is a valid DEPEND atom
   #
@@ -42,7 +45,7 @@ module Puppet::Util::Portage
   # @return [TrueClass]
   # @return [FalseClass]
   def valid_package?(package_name)
-    !!(package_name =~ BASE_ATOM_REGEX)
+    !!(package_name =~ BASE_ATOM_REGEX || package_name =~ REPOSITORY_ATOM_REGEX)
   end
 
   # Determine if a string is a valid DEPEND atom version
@@ -77,7 +80,8 @@ module Puppet::Util::Portage
   # If the atom is versioned, the returned value will contain the keys
   # :package, :compare, and :version. If the atom is unversioned then it will
   # contain the key :package. If the atom is slotted then it will contain the
-  # key :slot.
+  # key :slot. If the atom has a repository then it will contain the key
+  # :repository.
   #
   # @raise [Puppet::Util::Portage::AtomError]
   #
@@ -97,6 +101,8 @@ module Puppet::Util::Portage
       { compare: match[1] || '=', package: match[2], version: match[3], slot: match[4] }
     elsif (match = atom.match(WILDCARD_SLOTTED_ATOM_REGEX))
       { compare: match[1], package: match[2], version: match[3], slot: match[4] }
+    elsif (match = atom.match(REPOSITORY_ATOM_REGEX))
+      { package: match[1], repository: match[2] }.compact
     else
       raise AtomError, "#{atom} is not a valid atom"
     end
@@ -112,7 +118,7 @@ module Puppet::Util::Portage
       { compare: match[1] || '=', version: match[2] }
     elsif (match = cmpver.match wildcard_regex)
       { compare: match[1], version: match[2] }
-    else
+    elseb4156064fe292f777729a00aadc986ae0cc24a8a
       raise AtomError, "#{cmpver} is not a valid compare version"
     end
   end
@@ -135,6 +141,10 @@ module Puppet::Util::Portage
     if hash[:slot]
       str << ':'
       str << hash[:slot]
+    end
+    if hash[:repository]
+      str << '::'
+      str << hash[:repository]
     end
 
     str
